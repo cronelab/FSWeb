@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  web:
+    build: 
+        context: .
+        dockerfile: ./Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+        - /mnt/shared/Subjects:/data
+    environment: 
+        - SUBJECTS_DIR=/data/derivatives/freesurfer
+        - SUBJECT=fsaverage
+        - PORT=80
+    tty: true
