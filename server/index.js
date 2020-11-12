@@ -52,4 +52,7 @@ app.ws('/status', (ws, req) => {
 
 })
 
+app.use("/docs/", express.static(path.join(__dirname, "/docs", "/build/html")));
+
+
 app.listen(PORT, () => console.log(`Serving on port: ${PORT}`));
