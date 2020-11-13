@@ -11,11 +11,23 @@ import Dropdown from "react-bootstrap/Dropdown";
 import ToggleButtonGroup from "react-bootstrap/ToggleButtonGroup";
 import ToggleButton from "react-bootstrap/ToggleButton";
 function FileUpload() {
-  const [file, setFile] = useState(); // storing the uploaded file    // storing the recived file from backend
+  const [file, setFile] = useState();
+  const [workflow,setWorkflow]=useState("")
+  const [subjName, setSubjName] = useState("")
+  const [numThreads, setNumThreads] = useState(0);
   const [incomingMessages, setIncomingMessages] = useState([]);
-  let webSocket = new WebSocket("ws://localhost:5000/status");
+  let webSocket = new WebSocket(`ws://localhost:${process.env.PORT}/status`);
+
+  useEffect(() => {
+    (async () => {
+      let req = await fetch("/nproc");
+      let threads = await req.text();
+      setNumThreads(threads);
+    })();
+  }, []);
 
   webSocket.onmessage = (e) => {
+    console.log(e.data);
     if (e.data.length > 0) {
       let newLineData = e.data.split("\n");
       let splitData = newLineData.map((data, index) => {
@@ -41,23 +53,9 @@ function FileUpload() {
     }
   };
 
-  useEffect(() => {
-    if (file) {
-      let formData = new FormData();
-      formData.append("file", file);
-      fetch("http://localhost:5000/upload", {
-        method: "POST",
-        body: formData,
-      }).then((res) => {
-        console.log(res);
-      });
-      setIncomingMessages(["Starting reconstruction..."]);
-    }
-  }, [file]);
-
   return (
     <Container fluid>
-      <Row style={{marginTop: "20px"}}>
+      <Row style={{ marginTop: "20px" }}>
         <Col>
           <Form>
             <Form.Group>
@@ -81,15 +79,19 @@ function FileUpload() {
             <Form.Control
               aria-label="Small"
               aria-describedby="inputGroup-sizing-sm"
+              onChange={(e)=>setNumThreads(e.target.value)}
+              placeHolder={numThreads}
             />
           </InputGroup>
           <InputGroup size="sm" className="mb-1">
             <InputGroup.Prepend>
-              <InputGroup.Text>Patient name</InputGroup.Text>
+              <InputGroup.Text>Subject name</InputGroup.Text>
             </InputGroup.Prepend>
             <Form.Control
               aria-label="Small"
               aria-describedby="inputGroup-sizing-sm"
+              onChange={(e) => setSubjName(e.target.value)}
+              value={subjName}
             />
           </InputGroup>
           <Row>
@@ -100,10 +102,10 @@ function FileUpload() {
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
-                  <Dropdown.Item>all</Dropdown.Item>
-                  <Dropdown.Item>autorecon1</Dropdown.Item>
-                  <Dropdown.Item>autorecon2</Dropdown.Item>
-                  <Dropdown.Item>autorecon3</Dropdown.Item>
+                  <Dropdown.Item onClick={()=> setWorkflow("all")}>all</Dropdown.Item>
+                  <Dropdown.Item onClick={()=> setWorkflow("autorecon1")}>autorecon1</Dropdown.Item>
+                  <Dropdown.Item onClick={()=> setWorkflow("autorecon2")}>autorecon2</Dropdown.Item>
+                  <Dropdown.Item onClick={()=> setWorkflow("autorecon3")}>autorecon3</Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             </Col>
@@ -119,15 +121,16 @@ function FileUpload() {
             <InputGroup.Prepend>
               <InputGroup.Checkbox aria-label="Checkbox for following text input" />
             </InputGroup.Prepend>
-            <Form.Control       placeholder="Hippocampus/Amygdala"
-aria-label="Hippocampus/Amygdala" />
+            <Form.Control
+              placeholder="Hippocampus/Amygdala"
+              aria-label="Hippocampus/Amygdala"
+            />
           </InputGroup>
           <InputGroup className="mb-3">
             <InputGroup.Prepend>
               <InputGroup.Checkbox aria-label="Checkbox for following text input" />
             </InputGroup.Prepend>
-            <Form.Control       placeholder="Brainstem"
-aria-label="Brainstem" />
+            <Form.Control placeholder="Brainstem" aria-label="Brainstem" />
           </InputGroup>
         </Col>
         <Col>
@@ -141,6 +144,26 @@ aria-label="Brainstem" />
           </Card>
         </Col>
       </Row>
+      <Button
+        onClick={() => {
+          if (file) {
+            let formData = new FormData();
+            formData.append("file", file);
+            formData.append("subjName", subjName)
+            formData.append("workflow",workflow)
+            formData.append("nproc", numThreads)
+            fetch(`http://localhost:${process.env.PORT}/upload`, {
+              method: "POST",
+              body: formData,
+            }).then((res) => {
+              console.log(res);
+            });
+            setIncomingMessages(["Starting reconstruction..."]);
+          }
+        }}
+      >
+        Begin
+      </Button>
     </Container>
   );
 }

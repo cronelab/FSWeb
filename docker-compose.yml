@@ -7,8 +7,10 @@ services:
     ports:
       - "5000:5000"
     volumes:
-        - /mnt/shared/Subjects:/data
+        - $NeuroseekPipeline/data:/data
+        - $NeuroseekPipeline/Projects/FSWeb:/freesurferweb/
     environment: 
+        - SOURCE_DATA=/data/sourcedata
         - SUBJECTS_DIR=/data/derivatives/freesurfer
         - SUBJECT=fsaverage
         - PORT=80

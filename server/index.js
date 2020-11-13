@@ -12,7 +12,8 @@ import webpack from 'webpack'
 const app = express();
 let expressWS = ws(app);
 let __dirname = path.resolve(path.dirname(""));
-
+let subjectDir = process.env.SUBJECTS_DIR
+let sourceDir = process.env.SOURCE_DATA || "/data/sourcedata"
 const compiler = webpack(config);
 
 const PORT = process.env.PORT || 5000;
@@ -27,29 +28,37 @@ app.use(express.static(path.resolve(__dirname, "dist")));
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 app.ws('/status', (ws, req) => {
-    app.post('/upload', async (req, res) => {
+    app.post('/upload',  (req, res) => {
         if (!req.files) {
             return res.status(500).send({ msg: "file is not found" })
         }
         const myFile = req.files.file;
-        myFile.mv(`${__dirname}/subjects/${myFile.name}`);
-        shelljs.exec(`recon-all -s 2014 -i ${__dirname}/subjects/${myFile.name} -autorecon1 -hemi lh -threads 6 -notify ${__dirname}/subjects/file.txt`, { silent: true, async: true })
+        console.log();
+        myFile.mv(`${sourceDir}/${req.body.subjName}_${myFile.name}`).then(async (x) => {
+            shelljs.exec(`gunzip ${sourceDir}/${req.body.subjName}_${myFile.name}`);
+            let file = myFile.name.replace('.gz', '');
+            console.log(file)
+            shelljs.exec(`recon-all -s ${req.body.subjName} -i ${sourceDir}/${req.body.subjName}_${file} -${req.body.workflow} -threads ${req.body.nproc} -notify ${subjectDir}/${req.body.subjName}_notify.txt`, { silent: true, async: true })
+            res.send("sent")
+            await sleep(5000)
 
-        res.send("sent")
-        await sleep(5000)
-
-        fs.watch(`${__dirname}/subjects/2014/scripts/recon-all-status.log`, (eventType, filename) => {
-            if (filename) {
-                let fileContents = fs.readFileSync(`${__dirname}/subjects/2014/scripts/recon-all-status.log`, 'utf8')
-                ws.send(fileContents)
-
-            }
-            else {
-                console.log('mistake')
-            }
-        });
+            fs.watch(`${subjectDir}/${req.body.subjName}/scripts/recon-all-status.log`, (eventType, filename) => {
+                if (filename) {
+                    let fileContents = fs.readFileSync(`${subjectDir}/${req.body.subjName}/scripts/recon-all-status.log`, 'utf8')
+                    console.log(fileContents)
+                    ws.send(fileContents)
+                }
+                else {
+                    console.log('mistake')
+                }
+            });
+        })
     })
+})
 
+app.get('/nproc', (req, res) => {
+    let threads = shelljs.exec(`nproc`)
+    res.send(threads.trim())
 })
 
 app.use("/docs/", express.static(path.join(__dirname, "/docs", "/build/html")));
